@@ -63,7 +63,7 @@ WikiRAG/
    - HTTP: http://localhost:5254
    - HTTPS: https://localhost:7028
    - Health Check: http://localhost:5254/api/health
-   - OpenAPI/Swagger: https://localhost:7028/swagger (Development only)
+   - OpenAPI/Scalar: https://localhost:7028/scalar (Development only)
 
 ### Docker Development
 
