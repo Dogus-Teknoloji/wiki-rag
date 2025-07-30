@@ -1,0 +1,50 @@
+# Task ID: 6
+# Title: Implement Vector Storage and Retrieval Service
+# Status: pending
+# Dependencies: 2, 5
+# Priority: high
+# Description: Create a service for storing and retrieving vector embeddings from PgVector database with similarity search capabilities.
+# Details:
+1. Create a VectorStorageService:
+   ```csharp
+   public interface IVectorStorageService {
+     Task StoreChunkAsync(DocumentChunk chunk, float[] embedding);
+     Task StoreBatchAsync(List<(DocumentChunk chunk, float[] embedding)> items);
+     Task<List<ChunkSearchResult>> SearchSimilarAsync(float[] queryEmbedding, int limit = 5);
+     Task DeleteDocumentChunksAsync(string documentId);
+   }
+   ```
+
+2. Implement PgVector storage and retrieval:
+   ```csharp
+   public class PgVectorStorageService : IVectorStorageService {
+     private readonly NpgsqlConnection _connection;
+     
+     // Implement methods using PgVector's vector similarity search
+     // Example similarity search query:
+     // SELECT id, document_id, content, metadata, 
+     //        1 - (embedding <=> @queryEmbedding) as similarity
+     // FROM chunks
+     // ORDER BY embedding <=> @queryEmbedding
+     // LIMIT @limit
+   }
+   ```
+
+3. Implement batch operations for efficient storage
+
+4. Add indexing optimization for query performance
+
+5. Implement data consistency checks and validation
+
+6. Create monitoring for query performance
+
+7. Add support for different similarity metrics (cosine, dot product, euclidean)
+
+# Test Strategy:
+1. Unit test storage and retrieval operations
+2. Test similarity search with known vectors
+3. Benchmark search performance with various dataset sizes
+4. Verify batch operations work correctly
+5. Test data consistency checks
+6. Validate index usage with query execution plans
+7. Verify search results meet NFR-004 performance requirement (<500ms)

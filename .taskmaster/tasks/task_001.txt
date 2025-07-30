@@ -1,0 +1,25 @@
+# Task ID: 1
+# Title: Setup .NET Core 9 API Project with Docker
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Initialize the WikiRAG project with .NET Core 9 and configure Docker containerization for the application.
+# Details:
+1. Create a new .NET Core 9 Web API project
+2. Set up project structure with appropriate layers (API, Core, Infrastructure)
+3. Configure Docker support with a Dockerfile that includes:
+   - .NET Core 9 SDK for building
+   - .NET Core 9 runtime for production
+   - Multi-stage build for optimization
+4. Set up Docker Compose for local development
+5. Configure environment variables for different deployment scenarios
+6. Initialize Git repository with appropriate .gitignore
+7. Create basic health check endpoint at `/api/health`
+8. Document setup process in README.md
+
+# Test Strategy:
+1. Verify project builds successfully
+2. Ensure Docker container builds and runs
+3. Validate health check endpoint returns 200 OK
+4. Test Docker Compose setup with local development configuration
+5. Verify environment variable configuration works across environments

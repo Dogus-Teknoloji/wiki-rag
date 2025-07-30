@@ -1,0 +1,56 @@
+# Task ID: 5
+# Title: Integrate Azure OpenAI for Vector Embeddings
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Set up Azure OpenAI integration for generating vector embeddings from document chunks.
+# Details:
+1. Add Azure OpenAI SDK to the project:
+   ```bash
+   dotnet add package Azure.AI.OpenAI
+   ```
+
+2. Create an EmbeddingService:
+   ```csharp
+   public interface IEmbeddingService {
+     Task<float[]> GenerateEmbeddingAsync(string text);
+     Task<List<float[]>> GenerateEmbeddingsAsync(List<string> texts);
+   }
+   ```
+
+3. Implement Azure OpenAI embedding generation:
+   ```csharp
+   public class AzureOpenAIEmbeddingService : IEmbeddingService {
+     private readonly OpenAIClient _client;
+     
+     public AzureOpenAIEmbeddingService(OpenAIClient client) {
+       _client = client;
+     }
+     
+     public async Task<float[]> GenerateEmbeddingAsync(string text) {
+       var response = await _client.GetEmbeddingsAsync(
+         "text-embedding-ada-002",
+         new EmbeddingsOptions(text));
+       return response.Value.Data[0].Embedding.ToArray();
+     }
+     
+     // Implement batch embedding method
+   }
+   ```
+
+4. Configure Azure OpenAI connection in appsettings.json
+
+5. Implement retry logic and error handling for API rate limits
+
+6. Add caching for frequently requested embeddings
+
+7. Create a background service for batch processing embeddings
+
+# Test Strategy:
+1. Unit test embedding generation with mock responses
+2. Integration test with actual Azure OpenAI service
+3. Verify embedding dimensions match expected output (1536)
+4. Test retry logic with simulated failures
+5. Benchmark embedding generation performance
+6. Verify caching mechanism reduces API calls
+7. Test batch processing with various document sizes

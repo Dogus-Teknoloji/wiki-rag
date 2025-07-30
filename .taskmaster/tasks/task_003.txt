@@ -1,0 +1,45 @@
+# Task ID: 3
+# Title: Implement Document Ingestion API Endpoints
+# Status: done
+# Dependencies: 1, 2
+# Priority: high
+# Description: Create REST API endpoints for ingesting, updating, and managing Markdown documents in the knowledge base.
+# Details:
+1. Create DocumentController with the following endpoints:
+   - `POST /api/documents` - Ingest new document
+   - `PUT /api/documents/{id}` - Update existing document
+   - `DELETE /api/documents/{id}` - Remove document
+   - `GET /api/documents` - List all documents with pagination
+   - `GET /api/documents/{id}` - Retrieve specific document
+
+2. Implement request models:
+   ```csharp
+   public class DocumentRequest {
+     public string Title { get; set; }
+     public string Content { get; set; }
+     public string Author { get; set; }
+     public List<string> Tags { get; set; }
+   }
+   ```
+
+3. Implement response models with appropriate metadata
+
+4. Add Markdown validation using a library like Markdig
+
+5. Implement bulk document upload endpoint:
+   - `POST /api/documents/bulk` for multiple document ingestion
+
+6. Add document versioning support with timestamp tracking
+
+7. Implement proper error handling and validation responses
+
+8. Add authentication middleware and require auth for all endpoints
+
+# Test Strategy:
+1. Unit test each API endpoint with valid and invalid inputs
+2. Test Markdown validation with various document formats
+3. Verify bulk upload with multiple documents
+4. Test document versioning by updating existing documents
+5. Validate error responses for invalid requests
+6. Test authentication requirements for each endpoint
+7. Performance test with large documents to ensure response times meet NFR-001 (<200ms)

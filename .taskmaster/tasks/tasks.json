@@ -1,0 +1,266 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup .NET Core 9 API Project with Docker",
+        "description": "Initialize the WikiRAG project with .NET Core 9 and configure Docker containerization for the application.",
+        "details": "1. Create a new .NET Core 9 Web API project\n2. Set up project structure with appropriate layers (API, Core, Infrastructure)\n3. Configure Docker support with a Dockerfile that includes:\n   - .NET Core 9 SDK for building\n   - .NET Core 9 runtime for production\n   - Multi-stage build for optimization\n4. Set up Docker Compose for local development\n5. Configure environment variables for different deployment scenarios\n6. Initialize Git repository with appropriate .gitignore\n7. Create basic health check endpoint at `/api/health`\n8. Document setup process in README.md",
+        "testStrategy": "1. Verify project builds successfully\n2. Ensure Docker container builds and runs\n3. Validate health check endpoint returns 200 OK\n4. Test Docker Compose setup with local development configuration\n5. Verify environment variable configuration works across environments",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Configure PostgreSQL with PgVector Extension",
+        "description": "Set up PostgreSQL database with PgVector extension for vector storage and similarity search capabilities.",
+        "details": "1. Add PostgreSQL service to Docker Compose\n2. Configure PostgreSQL with PgVector extension:\n   ```sql\n   CREATE EXTENSION IF NOT EXISTS vector;\n   ```\n3. Create database schema for document storage:\n   ```sql\n   CREATE TABLE documents (\n     id SERIAL PRIMARY KEY,\n     title TEXT NOT NULL,\n     content TEXT NOT NULL,\n     author TEXT,\n     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n     tags TEXT[]\n   );\n   ```\n4. Create schema for vector chunks:\n   ```sql\n   CREATE TABLE chunks (\n     id SERIAL PRIMARY KEY,\n     document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,\n     content TEXT NOT NULL,\n     embedding vector(1536),\n     metadata JSONB,\n     chunk_index INTEGER,\n     CONSTRAINT unique_chunk UNIQUE (document_id, chunk_index)\n   );\n   ```\n5. Create indexes for vector similarity search:\n   ```sql\n   CREATE INDEX ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);\n   ```\n6. Implement database migration scripts\n7. Configure connection string and dependency injection in .NET application",
+        "testStrategy": "1. Verify PostgreSQL container starts with PgVector extension\n2. Test database connection from .NET application\n3. Validate schema creation scripts\n4. Test basic vector operations to ensure PgVector is functioning\n5. Benchmark vector similarity search performance with sample data\n6. Verify migration scripts work correctly",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement Document Ingestion API Endpoints",
+        "description": "Create REST API endpoints for ingesting, updating, and managing Markdown documents in the knowledge base.",
+        "details": "1. Create DocumentController with the following endpoints:\n   - `POST /api/documents` - Ingest new document\n   - `PUT /api/documents/{id}` - Update existing document\n   - `DELETE /api/documents/{id}` - Remove document\n   - `GET /api/documents` - List all documents with pagination\n   - `GET /api/documents/{id}` - Retrieve specific document\n\n2. Implement request models:\n   ```csharp\n   public class DocumentRequest {\n     public string Title { get; set; }\n     public string Content { get; set; }\n     public string Author { get; set; }\n     public List<string> Tags { get; set; }\n   }\n   ```\n\n3. Implement response models with appropriate metadata\n\n4. Add Markdown validation using a library like Markdig\n\n5. Implement bulk document upload endpoint:\n   - `POST /api/documents/bulk` for multiple document ingestion\n\n6. Add document versioning support with timestamp tracking\n\n7. Implement proper error handling and validation responses\n\n8. Add authentication middleware and require auth for all endpoints",
+        "testStrategy": "1. Unit test each API endpoint with valid and invalid inputs\n2. Test Markdown validation with various document formats\n3. Verify bulk upload with multiple documents\n4. Test document versioning by updating existing documents\n5. Validate error responses for invalid requests\n6. Test authentication requirements for each endpoint\n7. Performance test with large documents to ensure response times meet NFR-001 (<200ms)",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Develop Semantic Chunking Algorithm",
+        "description": "Implement semantic chunking algorithms to break down Markdown content while preserving context and document hierarchy.",
+        "details": "1. Create a ChunkingService that implements various chunking strategies:\n   ```csharp\n   public interface IChunkingService {\n     List<DocumentChunk> ChunkDocument(Document document, ChunkingStrategy strategy);\n   }\n   ```\n\n2. Implement semantic chunking strategies:\n   - Header-based chunking (split on H1, H2, etc.)\n   - Fixed-size chunking with overlap\n   - Semantic boundary detection\n\n3. Preserve document hierarchy by maintaining references to parent headers\n\n4. Handle special Markdown elements:\n   - Code blocks (keep intact)\n   - Tables (preserve structure)\n   - Lists (maintain as complete units)\n\n5. Implement chunk metadata tracking:\n   ```csharp\n   public class ChunkMetadata {\n     public string SourceDocumentId { get; set; }\n     public string SourceDocumentTitle { get; set; }\n     public int ChunkIndex { get; set; }\n     public List<string> ParentHeaders { get; set; }\n     public Dictionary<string, string> AdditionalMetadata { get; set; }\n   }\n   ```\n\n6. Add configuration options for chunk size and overlap percentage\n\n7. Implement special handling for different content categories (problem resolution, technical docs, interface usage)\n<info added on 2025-07-30T08:27:13.742Z>\n8. Fix Markdig block content extraction issues:\n   - Replace block.ToString() in HandleSpecialBlocks method with proper content extraction\n   - Implement correct conversion of Markdig AST blocks to markdown string representation\n   - Use Markdig's serialization methods to extract actual markdown content\n   - Add a utility method to properly convert different block types:\n     ```csharp\n     private string RenderMarkdownBlock(Block block)\n     {\n         using var writer = new StringWriter();\n         var renderer = new HtmlRenderer(writer);\n         renderer.Render(block);\n         return writer.ToString();\n     }\n     ```\n   - Update chunk boundary detection to properly handle rendered content\n</info added on 2025-07-30T08:27:13.742Z>\n<info added on 2025-07-30T08:31:43.121Z>\n9. Fix performance issues causing high RAM usage during tests:\n   - Add proper bounds checking in ChunkByFixedSize method to prevent infinite loops\n   - Ensure StringWriter is properly disposed in RenderMarkdownBlock method by using 'using' statement consistently\n   - Implement safeguards against infinite recursion in header processing with maximum depth limits\n   - Add memory optimization for large documents:\n     ```csharp\n     public void OptimizeMemoryUsage()\n     {\n         // Release large objects when no longer needed\n         GC.Collect(2, GCCollectionMode.Forced, true);\n     }\n     ```\n   - Implement diagnostic logging to identify bottlenecks:\n     ```csharp\n     private void LogChunkingPerformance(string strategy, int chunkCount, long memoryUsed, TimeSpan duration)\n     {\n         _logger.LogInformation($\"Chunking with {strategy}: {chunkCount} chunks created in {duration.TotalMilliseconds}ms using {memoryUsed / 1024 / 1024}MB RAM\");\n     }\n     ```\n   - Add timeout mechanism for chunking operations to prevent runaway processing\n</info added on 2025-07-30T08:31:43.121Z>\n<info added on 2025-07-30T08:38:05.408Z>\n10. Fixed high RAM usage and infinite loop issues:\n   - RESOLVED: Fixed-size chunking exceeded maximum iterations error\n     - Root cause: Incorrect iteration calculation causing loop to exceed expected iterations near end of content\n     - Solution: Improved iteration limit calculation with special handling for end-of-content scenarios\n     - Added break condition for small remaining content to prevent unnecessary iterations\n\n   - RESOLVED: High memory usage during tests\n     - Implemented document size limits (50MB maximum)\n     - Added header stack depth protection (max 10 levels)\n     - Created iteration limits with detailed error messages\n     - Implemented memory usage monitoring with warning system\n\n   - RESOLVED: Markdig content extraction issues\n     - Implemented fallback mechanism for NormalizeRenderer failures\n     - Added ExtractBlockContent method to handle different block types properly\n     - Improved error handling with try-catch blocks\n\n   - Performance improvements:\n     - Test execution time reduced from 2+ minutes to ~138ms\n     - All 6 tests now pass successfully without excessive memory consumption\n</info added on 2025-07-30T08:38:05.408Z>",
+        "testStrategy": "1. Unit test each chunking strategy with various document types\n2. Verify preservation of document hierarchy and context\n3. Test handling of special Markdown elements\n4. Validate chunk metadata accuracy\n5. Test with real-world documentation samples\n6. Measure chunking performance with large documents\n7. Verify different content categories are handled appropriately",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create ChunkingService Interface and Basic Structure",
+            "description": "Set up the foundational ChunkingService interface and basic implementation structure.",
+            "details": "1. Create the IChunkingService interface:\n   ```csharp\n   public interface IChunkingService {\n     List<DocumentChunk> ChunkDocument(Document document, ChunkingStrategy strategy);\n   }\n   ```\n\n2. Define ChunkingStrategy enum:\n   ```csharp\n   public enum ChunkingStrategy {\n     HeaderBased,\n     FixedSize,\n     Semantic\n   }\n   ```\n\n3. Create basic ChunkingService implementation structure with dependency injection setup.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 2,
+            "title": "Implement Basic Chunking Strategies (Header-based and Fixed-size)",
+            "description": "Implement header-based and fixed-size chunking strategies as foundational approaches.",
+            "details": "1. Implement header-based chunking:\n   - Split content on H1, H2, H3, etc. headers\n   - Maintain header hierarchy context\n   - Preserve parent-child relationships between sections\n\n2. Implement fixed-size chunking with overlap:\n   - Configure chunk size and overlap percentage\n   - Handle word boundaries to avoid splitting words\n   - Maintain continuity between adjacent chunks",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 3,
+            "title": "Preserve Document Hierarchy",
+            "description": "Maintain document hierarchy by tracking parent headers and section relationships in chunks.",
+            "details": "1. Track header hierarchy during chunking process\n2. Store parent header information for each chunk\n3. Maintain breadcrumb trail from root to current section\n4. Preserve document structure context for better retrieval",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 4,
+            "title": "Handle Special Markdown Elements",
+            "description": "Implement special handling for Markdown elements to preserve their structure and integrity.",
+            "details": "1. Handle code blocks:\n   - Keep code blocks intact without splitting\n   - Preserve syntax highlighting information\n   - Maintain code block boundaries\n\n2. Handle tables:\n   - Preserve table structure completely\n   - Keep headers with their corresponding rows\n   - Maintain table formatting\n\n3. Handle lists:\n   - Keep complete list items together\n   - Preserve nested list structures\n   - Maintain list numbering/bullets",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 5,
+            "title": "Implement Chunk Metadata Tracking",
+            "description": "Create comprehensive chunk metadata tracking system.",
+            "details": "1. Define ChunkMetadata class:\n   ```csharp\n   public class ChunkMetadata {\n     public string SourceDocumentId { get; set; }\n     public string SourceDocumentTitle { get; set; }\n     public int ChunkIndex { get; set; }\n     public List<string> ParentHeaders { get; set; }\n     public Dictionary<string, string> AdditionalMetadata { get; set; }\n   }\n   ```\n\n2. Track chunk position and context\n3. Store document source information\n4. Maintain chunk relationships and dependencies",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 6,
+            "title": "Add Configuration Options for Chunk Size and Overlap",
+            "description": "Add configuration options for customizing chunk size and overlap settings.",
+            "details": "1. Create configuration class for chunking options\n2. Implement configurable chunk size limits\n3. Add overlap percentage settings\n4. Allow runtime configuration updates\n5. Provide default values for different document types",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 7,
+            "title": "Implement Content Category-Specific Handling",
+            "description": "Implement specialized handling for different content categories to optimize chunking based on content type.",
+            "details": "1. Identify content categories:\n   - Problem resolution documents\n   - Technical documentation\n   - Interface usage guides\n   - API documentation\n\n2. Implement category-specific chunking strategies\n3. Adjust chunk boundaries based on content type\n4. Optimize chunk sizes for different content patterns",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 8,
+            "title": "Fix Markdig Block Content Extraction Issues",
+            "description": "Fix Markdig content extraction issues that were causing problems with block content rendering.",
+            "details": "1. Replace block.ToString() calls with proper content extraction\n2. Implement correct conversion of Markdig AST blocks to markdown string representation\n3. Use Markdig's serialization methods to extract actual markdown content\n4. Add utility method for rendering different block types:\n   ```csharp\n   private string RenderMarkdownBlock(Block block)\n   {\n       using var writer = new StringWriter();\n       var renderer = new HtmlRenderer(writer);\n       renderer.Render(block);\n       return writer.ToString();\n   }\n   ```\n5. Update chunk boundary detection to properly handle rendered content",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 9,
+            "title": "Fix Performance Issues and Memory Optimization",
+            "description": "Resolve performance issues that were causing high RAM usage and infinite loops during testing.",
+            "details": "1. Add proper bounds checking in ChunkByFixedSize method to prevent infinite loops\n2. Ensure StringWriter is properly disposed using 'using' statements consistently\n3. Implement safeguards against infinite recursion in header processing with maximum depth limits\n4. Add memory optimization for large documents with garbage collection\n5. Implement diagnostic logging to identify bottlenecks\n6. Add timeout mechanism for chunking operations to prevent runaway processing\n7. Implement document size limits (50MB maximum)\n8. Add header stack depth protection (max 10 levels)\n9. Create iteration limits with detailed error messages",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 10,
+            "title": "Implement True Semantic Chunking using Azure OpenAI",
+            "description": "Replace the current header-based and fixed-size chunking with true semantic chunking using Azure OpenAI's text embeddings to identify semantic boundaries in Markdown content.",
+            "details": "1. Integrate Azure OpenAI embeddings service into the ChunkingService:\n   ```csharp\n   public class SemanticChunkingService : IChunkingService\n   {\n       private readonly IEmbeddingService _embeddingService;\n       private readonly ILogger<SemanticChunkingService> _logger;\n       \n       public SemanticChunkingService(IEmbeddingService embeddingService, ILogger<SemanticChunkingService> logger)\n       {\n           _embeddingService = embeddingService;\n           _logger = logger;\n       }\n   }\n   ```\n\n2. Implement semantic boundary detection algorithm:\n   - Split document into sentence-level segments\n   - Generate embeddings for sliding windows of sentences\n   - Calculate cosine similarity between adjacent windows\n   - Identify semantic boundaries where similarity drops below threshold\n   - Create chunks based on semantic coherence rather than fixed sizes\n\n3. Add semantic coherence scoring:\n   ```csharp\n   private async Task<float> CalculateSemanticCoherence(List<string> sentences, int startIndex, int endIndex)\n   {\n       var windowText = string.Join(\" \", sentences.Skip(startIndex).Take(endIndex - startIndex));\n       var embedding = await _embeddingService.GenerateEmbeddingAsync(windowText);\n       // Calculate internal coherence score\n       return CalculateCoherenceScore(embedding);\n   }\n   ```\n\n4. Implement adaptive chunk sizing:\n   - Use semantic similarity to determine optimal chunk boundaries\n   - Maintain minimum and maximum chunk sizes for practical constraints\n   - Preserve Markdown structure (don't break code blocks, tables, lists)\n   - Keep related content together based on semantic similarity\n\n5. Add configuration for semantic chunking parameters:\n   ```csharp\n   public class SemanticChunkingOptions\n   {\n       public float SimilarityThreshold { get; set; } = 0.75f;\n       public int MinChunkSize { get; set; } = 100;\n       public int MaxChunkSize { get; set; } = 2000;\n       public int SlidingWindowSize { get; set; } = 3; // sentences\n       public bool PreserveMarkdownStructure { get; set; } = true;\n   }\n   ```\n\n6. Implement sentence-level text segmentation:\n   - Use NLP libraries or regex patterns to split into sentences\n   - Handle Markdown-specific content (headers, code blocks, lists)\n   - Preserve punctuation and formatting context\n\n7. Add performance optimizations:\n   - Batch embedding requests to reduce API calls\n   - Cache embeddings for repeated text segments\n   - Implement parallel processing for large documents\n   - Add progress tracking for long-running operations",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Integrate Azure OpenAI for Vector Embeddings",
+        "description": "Set up Azure OpenAI integration for generating vector embeddings from document chunks.",
+        "details": "1. Add Azure OpenAI SDK to the project:\n   ```bash\n   dotnet add package Azure.AI.OpenAI\n   ```\n\n2. Create an EmbeddingService:\n   ```csharp\n   public interface IEmbeddingService {\n     Task<float[]> GenerateEmbeddingAsync(string text);\n     Task<List<float[]>> GenerateEmbeddingsAsync(List<string> texts);\n   }\n   ```\n\n3. Implement Azure OpenAI embedding generation:\n   ```csharp\n   public class AzureOpenAIEmbeddingService : IEmbeddingService {\n     private readonly OpenAIClient _client;\n     \n     public AzureOpenAIEmbeddingService(OpenAIClient client) {\n       _client = client;\n     }\n     \n     public async Task<float[]> GenerateEmbeddingAsync(string text) {\n       var response = await _client.GetEmbeddingsAsync(\n         \"text-embedding-ada-002\",\n         new EmbeddingsOptions(text));\n       return response.Value.Data[0].Embedding.ToArray();\n     }\n     \n     // Implement batch embedding method\n   }\n   ```\n\n4. Configure Azure OpenAI connection in appsettings.json\n\n5. Implement retry logic and error handling for API rate limits\n\n6. Add caching for frequently requested embeddings\n\n7. Create a background service for batch processing embeddings",
+        "testStrategy": "1. Unit test embedding generation with mock responses\n2. Integration test with actual Azure OpenAI service\n3. Verify embedding dimensions match expected output (1536)\n4. Test retry logic with simulated failures\n5. Benchmark embedding generation performance\n6. Verify caching mechanism reduces API calls\n7. Test batch processing with various document sizes",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Vector Storage and Retrieval Service",
+        "description": "Create a service for storing and retrieving vector embeddings from PgVector database with similarity search capabilities.",
+        "details": "1. Create a VectorStorageService:\n   ```csharp\n   public interface IVectorStorageService {\n     Task StoreChunkAsync(DocumentChunk chunk, float[] embedding);\n     Task StoreBatchAsync(List<(DocumentChunk chunk, float[] embedding)> items);\n     Task<List<ChunkSearchResult>> SearchSimilarAsync(float[] queryEmbedding, int limit = 5);\n     Task DeleteDocumentChunksAsync(string documentId);\n   }\n   ```\n\n2. Implement PgVector storage and retrieval:\n   ```csharp\n   public class PgVectorStorageService : IVectorStorageService {\n     private readonly NpgsqlConnection _connection;\n     \n     // Implement methods using PgVector's vector similarity search\n     // Example similarity search query:\n     // SELECT id, document_id, content, metadata, \n     //        1 - (embedding <=> @queryEmbedding) as similarity\n     // FROM chunks\n     // ORDER BY embedding <=> @queryEmbedding\n     // LIMIT @limit\n   }\n   ```\n\n3. Implement batch operations for efficient storage\n\n4. Add indexing optimization for query performance\n\n5. Implement data consistency checks and validation\n\n6. Create monitoring for query performance\n\n7. Add support for different similarity metrics (cosine, dot product, euclidean)",
+        "testStrategy": "1. Unit test storage and retrieval operations\n2. Test similarity search with known vectors\n3. Benchmark search performance with various dataset sizes\n4. Verify batch operations work correctly\n5. Test data consistency checks\n6. Validate index usage with query execution plans\n7. Verify search results meet NFR-004 performance requirement (<500ms)",
+        "priority": "high",
+        "dependencies": [
+          2,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Create Document Processing Pipeline",
+        "description": "Develop an end-to-end pipeline for processing documents from ingestion through chunking, embedding generation, and storage.",
+        "details": "1. Create a DocumentProcessingService:\n   ```csharp\n   public interface IDocumentProcessingService {\n     Task ProcessDocumentAsync(Document document);\n     Task ProcessBatchAsync(List<Document> documents);\n     Task UpdateDocumentAsync(Document document);\n     Task DeleteDocumentAsync(string documentId);\n   }\n   ```\n\n2. Implement the processing pipeline:\n   ```csharp\n   public class DocumentProcessingService : IDocumentProcessingService {\n     private readonly IChunkingService _chunkingService;\n     private readonly IEmbeddingService _embeddingService;\n     private readonly IVectorStorageService _vectorStorageService;\n     \n     public async Task ProcessDocumentAsync(Document document) {\n       // 1. Chunk the document\n       var chunks = _chunkingService.ChunkDocument(document, ChunkingStrategy.Semantic);\n       \n       // 2. Generate embeddings for chunks\n       var chunkTexts = chunks.Select(c => c.Content).ToList();\n       var embeddings = await _embeddingService.GenerateEmbeddingsAsync(chunkTexts);\n       \n       // 3. Store chunks with embeddings\n       var items = chunks.Zip(embeddings, (chunk, embedding) => (chunk, embedding)).ToList();\n       await _vectorStorageService.StoreBatchAsync(items);\n     }\n     \n     // Implement other methods\n   }\n   ```\n\n3. Add background processing using a queue for large documents\n\n4. Implement progress tracking and status updates\n\n5. Add error handling and retry logic\n\n6. Create event notifications for completed processing\n\n7. Implement document versioning and update handling",
+        "testStrategy": "1. Unit test the processing pipeline with mock services\n2. Integration test the full pipeline with test documents\n3. Verify chunking, embedding, and storage work together correctly\n4. Test error handling and recovery\n5. Benchmark processing performance with various document sizes\n6. Verify background processing works correctly\n7. Test document updates and versioning",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Integrate Microsoft Semantic Kernel for AI Agent",
+        "description": "Set up Microsoft Semantic Kernel framework to power the AI agent for generating responses based on retrieved content.",
+        "details": "1. Add Microsoft Semantic Kernel packages:\n   ```bash\n   dotnet add package Microsoft.SemanticKernel\n   dotnet add package Microsoft.SemanticKernel.Connectors.AI.OpenAI\n   ```\n\n2. Create a SemanticKernelService:\n   ```csharp\n   public class SemanticKernelService {\n     private readonly IKernel _kernel;\n     \n     public SemanticKernelService(IConfiguration config) {\n       // Initialize Semantic Kernel with Azure OpenAI\n       var builder = Kernel.CreateBuilder();\n       builder.AddAzureOpenAIChatCompletion(\n         deploymentName: config[\"AzureOpenAI:DeploymentName\"],\n         endpoint: config[\"AzureOpenAI:Endpoint\"],\n         apiKey: config[\"AzureOpenAI:ApiKey\"]);\n       _kernel = builder.Build();\n     }\n     \n     // Add methods for working with the kernel\n   }\n   ```\n\n3. Create prompt templates for different query types:\n   - General information queries\n   - Problem resolution queries\n   - Step-by-step instructions\n\n4. Implement context injection for retrieved document chunks\n\n5. Add source citation generation in responses\n\n6. Implement conversation context management\n\n7. Create confidence scoring for responses",
+        "testStrategy": "1. Unit test Semantic Kernel initialization\n2. Test prompt templates with various inputs\n3. Verify context injection works correctly\n4. Test source citation generation\n5. Validate conversation context management\n6. Benchmark response generation performance\n7. Verify confidence scoring accuracy",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Query and Search API Endpoints",
+        "description": "Create API endpoints for natural language queries and vector similarity searches.",
+        "details": "1. Create QueryController with endpoints:\n   ```csharp\n   [ApiController]\n   [Route(\"api/[controller]\")]\n   public class QueryController : ControllerBase {\n     [HttpPost(\"query\")]\n     public async Task<ActionResult<QueryResponse>> Query(QueryRequest request) { ... }\n     \n     [HttpGet(\"search\")]\n     public async Task<ActionResult<SearchResponse>> Search([FromQuery] SearchRequest request) { ... }\n     \n     [HttpGet(\"conversations/{id}\")]\n     public async Task<ActionResult<ConversationResponse>> GetConversation(string id) { ... }\n   }\n   ```\n\n2. Implement QueryService for processing natural language queries:\n   ```csharp\n   public class QueryService {\n     private readonly IVectorStorageService _vectorStorage;\n     private readonly IEmbeddingService _embeddingService;\n     private readonly SemanticKernelService _semanticKernel;\n     \n     public async Task<QueryResponse> ProcessQueryAsync(string query, string conversationId = null) {\n       // 1. Generate embedding for query\n       var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);\n       \n       // 2. Retrieve similar chunks\n       var similarChunks = await _vectorStorage.SearchSimilarAsync(queryEmbedding);\n       \n       // 3. Generate response using Semantic Kernel\n       var response = await _semanticKernel.GenerateResponseAsync(query, similarChunks, conversationId);\n       \n       return new QueryResponse {\n         Answer = response.Answer,\n         Sources = response.Sources,\n         ConfidenceScore = response.ConfidenceScore\n       };\n     }\n   }\n   ```\n\n3. Implement conversation history storage and retrieval\n\n4. Add response caching for frequent queries\n\n5. Implement query preprocessing and enhancement\n\n6. Add metrics collection for query performance\n\n7. Create feedback mechanism for response quality",
+        "testStrategy": "1. Unit test query processing with mock services\n2. Integration test the full query pipeline\n3. Test conversation history management\n4. Benchmark query response times to verify NFR-002 (<2 seconds)\n5. Test caching mechanism effectiveness\n6. Verify source citations are accurate\n7. Test with various query types and complexity levels",
+        "priority": "medium",
+        "dependencies": [
+          6,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Authentication and Authorization",
+        "description": "Set up authentication and role-based access control for API endpoints.",
+        "details": "1. Add authentication middleware to the API:\n   ```csharp\n   services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)\n     .AddJwtBearer(options => {\n       // Configure JWT options\n     });\n   ```\n\n2. Create user management endpoints:\n   - User registration\n   - Login/token generation\n   - Password reset\n   - User profile management\n\n3. Implement role-based authorization:\n   ```csharp\n   services.AddAuthorization(options => {\n     options.AddPolicy(\"AdminOnly\", policy => policy.RequireRole(\"Admin\"));\n     options.AddPolicy(\"ReadOnly\", policy => policy.RequireRole(\"Reader\"));\n     options.AddPolicy(\"ContentManager\", policy => policy.RequireRole(\"ContentManager\"));\n   });\n   ```\n\n4. Apply authorization attributes to controllers:\n   ```csharp\n   [Authorize(Policy = \"ContentManager\")]\n   [HttpPost]\n   public async Task<ActionResult<DocumentResponse>> CreateDocument(DocumentRequest request) { ... }\n   ```\n\n5. Implement API key authentication for service-to-service communication\n\n6. Add rate limiting for API endpoints\n\n7. Implement audit logging for security events",
+        "testStrategy": "1. Unit test authentication middleware configuration\n2. Test JWT token generation and validation\n3. Verify role-based access control works correctly\n4. Test API key authentication\n5. Verify rate limiting prevents abuse\n6. Test audit logging captures relevant events\n7. Perform security testing (penetration testing) on authentication mechanisms",
+        "priority": "high",
+        "dependencies": [
+          1,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement Monitoring and Logging",
+        "description": "Set up comprehensive monitoring, logging, and analytics for the WikiRAG system.",
+        "details": "1. Add structured logging with Serilog:\n   ```csharp\n   services.AddLogging(builder => {\n     builder.ClearProviders();\n     builder.AddSerilog(new LoggerConfiguration()\n       .WriteTo.Console()\n       .WriteTo.File(\"logs/wikirag-.log\", rollingInterval: RollingInterval.Day)\n       .CreateLogger());\n   });\n   ```\n\n2. Implement performance metrics collection:\n   - Query response times\n   - Document processing times\n   - Vector search performance\n   - API endpoint response times\n\n3. Create health check endpoints with detailed status:\n   ```csharp\n   services.AddHealthChecks()\n     .AddDbContextCheck<ApplicationDbContext>(\"database\")\n     .AddCheck<AzureOpenAIHealthCheck>(\"azure-openai\")\n     .AddCheck<VectorDatabaseHealthCheck>(\"vector-db\");\n   ```\n\n4. Set up dashboards for system monitoring\n\n5. Implement alerting for critical issues\n\n6. Add user activity analytics\n\n7. Create performance testing suite for load testing",
+        "testStrategy": "1. Verify logging captures appropriate information\n2. Test health check endpoints return accurate status\n3. Validate metrics collection accuracy\n4. Test alerting mechanisms with simulated failures\n5. Verify dashboard displays relevant information\n6. Test analytics data collection\n7. Perform load testing to verify system performance under stress",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Optimize Performance and Implement Caching",
+        "description": "Enhance system performance through optimization techniques and implement caching strategies.",
+        "details": "1. Implement response caching for query results:\n   ```csharp\n   services.AddResponseCaching();\n   \n   app.UseResponseCaching();\n   ```\n\n2. Add distributed caching for embeddings:\n   ```csharp\n   services.AddStackExchangeRedisCache(options => {\n     options.Configuration = Configuration.GetConnectionString(\"Redis\");\n     options.InstanceName = \"WikiRAG:\";\n   });\n   ```\n\n3. Optimize database queries:\n   - Add appropriate indexes\n   - Implement query optimization\n   - Use efficient batch operations\n\n4. Implement connection pooling for database access\n\n5. Add asynchronous processing for non-critical operations\n\n6. Optimize vector similarity search:\n   - Implement approximate nearest neighbor search\n   - Use indexing strategies for PgVector\n\n7. Set up performance benchmarking and continuous monitoring",
+        "testStrategy": "1. Benchmark system performance before and after optimizations\n2. Test caching effectiveness with repeated queries\n3. Verify distributed caching works correctly\n4. Measure database query performance improvements\n5. Test system under load to verify optimizations work at scale\n6. Verify vector search optimization improves response times\n7. Validate system meets all performance requirements (NFR-001 through NFR-004)",
+        "priority": "medium",
+        "dependencies": [
+          6,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-30T07:11:37.533Z",
+      "updated": "2025-07-30T08:45:24.726Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

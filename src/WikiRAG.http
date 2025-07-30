@@ -1,0 +1,6 @@
+@WikiRAG_HostAddress = http://localhost:5254
+
+GET {{WikiRAG_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

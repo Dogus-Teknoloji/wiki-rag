@@ -1,0 +1,50 @@
+# Task ID: 2
+# Title: Configure PostgreSQL with PgVector Extension
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Set up PostgreSQL database with PgVector extension for vector storage and similarity search capabilities.
+# Details:
+1. Add PostgreSQL service to Docker Compose
+2. Configure PostgreSQL with PgVector extension:
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS vector;
+   ```
+3. Create database schema for document storage:
+   ```sql
+   CREATE TABLE documents (
+     id SERIAL PRIMARY KEY,
+     title TEXT NOT NULL,
+     content TEXT NOT NULL,
+     author TEXT,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     tags TEXT[]
+   );
+   ```
+4. Create schema for vector chunks:
+   ```sql
+   CREATE TABLE chunks (
+     id SERIAL PRIMARY KEY,
+     document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+     content TEXT NOT NULL,
+     embedding vector(1536),
+     metadata JSONB,
+     chunk_index INTEGER,
+     CONSTRAINT unique_chunk UNIQUE (document_id, chunk_index)
+   );
+   ```
+5. Create indexes for vector similarity search:
+   ```sql
+   CREATE INDEX ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+   ```
+6. Implement database migration scripts
+7. Configure connection string and dependency injection in .NET application
+
+# Test Strategy:
+1. Verify PostgreSQL container starts with PgVector extension
+2. Test database connection from .NET application
+3. Validate schema creation scripts
+4. Test basic vector operations to ensure PgVector is functioning
+5. Benchmark vector similarity search performance with sample data
+6. Verify migration scripts work correctly

@@ -1,0 +1,67 @@
+# Task ID: 9
+# Title: Implement Query and Search API Endpoints
+# Status: pending
+# Dependencies: 6, 7, 8
+# Priority: medium
+# Description: Create API endpoints for natural language queries and vector similarity searches.
+# Details:
+1. Create QueryController with endpoints:
+   ```csharp
+   [ApiController]
+   [Route("api/[controller]")]
+   public class QueryController : ControllerBase {
+     [HttpPost("query")]
+     public async Task<ActionResult<QueryResponse>> Query(QueryRequest request) { ... }
+     
+     [HttpGet("search")]
+     public async Task<ActionResult<SearchResponse>> Search([FromQuery] SearchRequest request) { ... }
+     
+     [HttpGet("conversations/{id}")]
+     public async Task<ActionResult<ConversationResponse>> GetConversation(string id) { ... }
+   }
+   ```
+
+2. Implement QueryService for processing natural language queries:
+   ```csharp
+   public class QueryService {
+     private readonly IVectorStorageService _vectorStorage;
+     private readonly IEmbeddingService _embeddingService;
+     private readonly SemanticKernelService _semanticKernel;
+     
+     public async Task<QueryResponse> ProcessQueryAsync(string query, string conversationId = null) {
+       // 1. Generate embedding for query
+       var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
+       
+       // 2. Retrieve similar chunks
+       var similarChunks = await _vectorStorage.SearchSimilarAsync(queryEmbedding);
+       
+       // 3. Generate response using Semantic Kernel
+       var response = await _semanticKernel.GenerateResponseAsync(query, similarChunks, conversationId);
+       
+       return new QueryResponse {
+         Answer = response.Answer,
+         Sources = response.Sources,
+         ConfidenceScore = response.ConfidenceScore
+       };
+     }
+   }
+   ```
+
+3. Implement conversation history storage and retrieval
+
+4. Add response caching for frequent queries
+
+5. Implement query preprocessing and enhancement
+
+6. Add metrics collection for query performance
+
+7. Create feedback mechanism for response quality
+
+# Test Strategy:
+1. Unit test query processing with mock services
+2. Integration test the full query pipeline
+3. Test conversation history management
+4. Benchmark query response times to verify NFR-002 (<2 seconds)
+5. Test caching mechanism effectiveness
+6. Verify source citations are accurate
+7. Test with various query types and complexity levels

@@ -1,0 +1,318 @@
+# Task ID: 4
+# Title: Develop Semantic Chunking Algorithm
+# Status: in-progress
+# Dependencies: 3
+# Priority: high
+# Description: Implement semantic chunking algorithms to break down Markdown content while preserving context and document hierarchy.
+# Details:
+1. Create a ChunkingService that implements various chunking strategies:
+   ```csharp
+   public interface IChunkingService {
+     List<DocumentChunk> ChunkDocument(Document document, ChunkingStrategy strategy);
+   }
+   ```
+
+2. Implement semantic chunking strategies:
+   - Header-based chunking (split on H1, H2, etc.)
+   - Fixed-size chunking with overlap
+   - Semantic boundary detection
+
+3. Preserve document hierarchy by maintaining references to parent headers
+
+4. Handle special Markdown elements:
+   - Code blocks (keep intact)
+   - Tables (preserve structure)
+   - Lists (maintain as complete units)
+
+5. Implement chunk metadata tracking:
+   ```csharp
+   public class ChunkMetadata {
+     public string SourceDocumentId { get; set; }
+     public string SourceDocumentTitle { get; set; }
+     public int ChunkIndex { get; set; }
+     public List<string> ParentHeaders { get; set; }
+     public Dictionary<string, string> AdditionalMetadata { get; set; }
+   }
+   ```
+
+6. Add configuration options for chunk size and overlap percentage
+
+7. Implement special handling for different content categories (problem resolution, technical docs, interface usage)
+<info added on 2025-07-30T08:27:13.742Z>
+8. Fix Markdig block content extraction issues:
+   - Replace block.ToString() in HandleSpecialBlocks method with proper content extraction
+   - Implement correct conversion of Markdig AST blocks to markdown string representation
+   - Use Markdig's serialization methods to extract actual markdown content
+   - Add a utility method to properly convert different block types:
+     ```csharp
+     private string RenderMarkdownBlock(Block block)
+     {
+         using var writer = new StringWriter();
+         var renderer = new HtmlRenderer(writer);
+         renderer.Render(block);
+         return writer.ToString();
+     }
+     ```
+   - Update chunk boundary detection to properly handle rendered content
+</info added on 2025-07-30T08:27:13.742Z>
+<info added on 2025-07-30T08:31:43.121Z>
+9. Fix performance issues causing high RAM usage during tests:
+   - Add proper bounds checking in ChunkByFixedSize method to prevent infinite loops
+   - Ensure StringWriter is properly disposed in RenderMarkdownBlock method by using 'using' statement consistently
+   - Implement safeguards against infinite recursion in header processing with maximum depth limits
+   - Add memory optimization for large documents:
+     ```csharp
+     public void OptimizeMemoryUsage()
+     {
+         // Release large objects when no longer needed
+         GC.Collect(2, GCCollectionMode.Forced, true);
+     }
+     ```
+   - Implement diagnostic logging to identify bottlenecks:
+     ```csharp
+     private void LogChunkingPerformance(string strategy, int chunkCount, long memoryUsed, TimeSpan duration)
+     {
+         _logger.LogInformation($"Chunking with {strategy}: {chunkCount} chunks created in {duration.TotalMilliseconds}ms using {memoryUsed / 1024 / 1024}MB RAM");
+     }
+     ```
+   - Add timeout mechanism for chunking operations to prevent runaway processing
+</info added on 2025-07-30T08:31:43.121Z>
+<info added on 2025-07-30T08:38:05.408Z>
+10. Fixed high RAM usage and infinite loop issues:
+   - RESOLVED: Fixed-size chunking exceeded maximum iterations error
+     - Root cause: Incorrect iteration calculation causing loop to exceed expected iterations near end of content
+     - Solution: Improved iteration limit calculation with special handling for end-of-content scenarios
+     - Added break condition for small remaining content to prevent unnecessary iterations
+
+   - RESOLVED: High memory usage during tests
+     - Implemented document size limits (50MB maximum)
+     - Added header stack depth protection (max 10 levels)
+     - Created iteration limits with detailed error messages
+     - Implemented memory usage monitoring with warning system
+
+   - RESOLVED: Markdig content extraction issues
+     - Implemented fallback mechanism for NormalizeRenderer failures
+     - Added ExtractBlockContent method to handle different block types properly
+     - Improved error handling with try-catch blocks
+
+   - Performance improvements:
+     - Test execution time reduced from 2+ minutes to ~138ms
+     - All 6 tests now pass successfully without excessive memory consumption
+</info added on 2025-07-30T08:38:05.408Z>
+
+# Test Strategy:
+1. Unit test each chunking strategy with various document types
+2. Verify preservation of document hierarchy and context
+3. Test handling of special Markdown elements
+4. Validate chunk metadata accuracy
+5. Test with real-world documentation samples
+6. Measure chunking performance with large documents
+7. Verify different content categories are handled appropriately
+
+# Subtasks:
+## 1. Create ChunkingService Interface and Basic Structure [done]
+### Dependencies: None
+### Description: Set up the foundational ChunkingService interface and basic implementation structure.
+### Details:
+1. Create the IChunkingService interface:
+   ```csharp
+   public interface IChunkingService {
+     List<DocumentChunk> ChunkDocument(Document document, ChunkingStrategy strategy);
+   }
+   ```
+
+2. Define ChunkingStrategy enum:
+   ```csharp
+   public enum ChunkingStrategy {
+     HeaderBased,
+     FixedSize,
+     Semantic
+   }
+   ```
+
+3. Create basic ChunkingService implementation structure with dependency injection setup.
+
+## 2. Implement Basic Chunking Strategies (Header-based and Fixed-size) [done]
+### Dependencies: None
+### Description: Implement header-based and fixed-size chunking strategies as foundational approaches.
+### Details:
+1. Implement header-based chunking:
+   - Split content on H1, H2, H3, etc. headers
+   - Maintain header hierarchy context
+   - Preserve parent-child relationships between sections
+
+2. Implement fixed-size chunking with overlap:
+   - Configure chunk size and overlap percentage
+   - Handle word boundaries to avoid splitting words
+   - Maintain continuity between adjacent chunks
+
+## 3. Preserve Document Hierarchy [done]
+### Dependencies: None
+### Description: Maintain document hierarchy by tracking parent headers and section relationships in chunks.
+### Details:
+1. Track header hierarchy during chunking process
+2. Store parent header information for each chunk
+3. Maintain breadcrumb trail from root to current section
+4. Preserve document structure context for better retrieval
+
+## 4. Handle Special Markdown Elements [done]
+### Dependencies: None
+### Description: Implement special handling for Markdown elements to preserve their structure and integrity.
+### Details:
+1. Handle code blocks:
+   - Keep code blocks intact without splitting
+   - Preserve syntax highlighting information
+   - Maintain code block boundaries
+
+2. Handle tables:
+   - Preserve table structure completely
+   - Keep headers with their corresponding rows
+   - Maintain table formatting
+
+3. Handle lists:
+   - Keep complete list items together
+   - Preserve nested list structures
+   - Maintain list numbering/bullets
+
+## 5. Implement Chunk Metadata Tracking [done]
+### Dependencies: None
+### Description: Create comprehensive chunk metadata tracking system.
+### Details:
+1. Define ChunkMetadata class:
+   ```csharp
+   public class ChunkMetadata {
+     public string SourceDocumentId { get; set; }
+     public string SourceDocumentTitle { get; set; }
+     public int ChunkIndex { get; set; }
+     public List<string> ParentHeaders { get; set; }
+     public Dictionary<string, string> AdditionalMetadata { get; set; }
+   }
+   ```
+
+2. Track chunk position and context
+3. Store document source information
+4. Maintain chunk relationships and dependencies
+
+## 6. Add Configuration Options for Chunk Size and Overlap [done]
+### Dependencies: None
+### Description: Add configuration options for customizing chunk size and overlap settings.
+### Details:
+1. Create configuration class for chunking options
+2. Implement configurable chunk size limits
+3. Add overlap percentage settings
+4. Allow runtime configuration updates
+5. Provide default values for different document types
+
+## 7. Implement Content Category-Specific Handling [done]
+### Dependencies: None
+### Description: Implement specialized handling for different content categories to optimize chunking based on content type.
+### Details:
+1. Identify content categories:
+   - Problem resolution documents
+   - Technical documentation
+   - Interface usage guides
+   - API documentation
+
+2. Implement category-specific chunking strategies
+3. Adjust chunk boundaries based on content type
+4. Optimize chunk sizes for different content patterns
+
+## 8. Fix Markdig Block Content Extraction Issues [done]
+### Dependencies: None
+### Description: Fix Markdig content extraction issues that were causing problems with block content rendering.
+### Details:
+1. Replace block.ToString() calls with proper content extraction
+2. Implement correct conversion of Markdig AST blocks to markdown string representation
+3. Use Markdig's serialization methods to extract actual markdown content
+4. Add utility method for rendering different block types:
+   ```csharp
+   private string RenderMarkdownBlock(Block block)
+   {
+       using var writer = new StringWriter();
+       var renderer = new HtmlRenderer(writer);
+       renderer.Render(block);
+       return writer.ToString();
+   }
+   ```
+5. Update chunk boundary detection to properly handle rendered content
+
+## 9. Fix Performance Issues and Memory Optimization [done]
+### Dependencies: None
+### Description: Resolve performance issues that were causing high RAM usage and infinite loops during testing.
+### Details:
+1. Add proper bounds checking in ChunkByFixedSize method to prevent infinite loops
+2. Ensure StringWriter is properly disposed using 'using' statements consistently
+3. Implement safeguards against infinite recursion in header processing with maximum depth limits
+4. Add memory optimization for large documents with garbage collection
+5. Implement diagnostic logging to identify bottlenecks
+6. Add timeout mechanism for chunking operations to prevent runaway processing
+7. Implement document size limits (50MB maximum)
+8. Add header stack depth protection (max 10 levels)
+9. Create iteration limits with detailed error messages
+
+## 10. Implement True Semantic Chunking using Azure OpenAI [pending]
+### Dependencies: None
+### Description: Replace the current header-based and fixed-size chunking with true semantic chunking using Azure OpenAI's text embeddings to identify semantic boundaries in Markdown content.
+### Details:
+1. Integrate Azure OpenAI embeddings service into the ChunkingService:
+   ```csharp
+   public class SemanticChunkingService : IChunkingService
+   {
+       private readonly IEmbeddingService _embeddingService;
+       private readonly ILogger<SemanticChunkingService> _logger;
+       
+       public SemanticChunkingService(IEmbeddingService embeddingService, ILogger<SemanticChunkingService> logger)
+       {
+           _embeddingService = embeddingService;
+           _logger = logger;
+       }
+   }
+   ```
+
+2. Implement semantic boundary detection algorithm:
+   - Split document into sentence-level segments
+   - Generate embeddings for sliding windows of sentences
+   - Calculate cosine similarity between adjacent windows
+   - Identify semantic boundaries where similarity drops below threshold
+   - Create chunks based on semantic coherence rather than fixed sizes
+
+3. Add semantic coherence scoring:
+   ```csharp
+   private async Task<float> CalculateSemanticCoherence(List<string> sentences, int startIndex, int endIndex)
+   {
+       var windowText = string.Join(" ", sentences.Skip(startIndex).Take(endIndex - startIndex));
+       var embedding = await _embeddingService.GenerateEmbeddingAsync(windowText);
+       // Calculate internal coherence score
+       return CalculateCoherenceScore(embedding);
+   }
+   ```
+
+4. Implement adaptive chunk sizing:
+   - Use semantic similarity to determine optimal chunk boundaries
+   - Maintain minimum and maximum chunk sizes for practical constraints
+   - Preserve Markdown structure (don't break code blocks, tables, lists)
+   - Keep related content together based on semantic similarity
+
+5. Add configuration for semantic chunking parameters:
+   ```csharp
+   public class SemanticChunkingOptions
+   {
+       public float SimilarityThreshold { get; set; } = 0.75f;
+       public int MinChunkSize { get; set; } = 100;
+       public int MaxChunkSize { get; set; } = 2000;
+       public int SlidingWindowSize { get; set; } = 3; // sentences
+       public bool PreserveMarkdownStructure { get; set; } = true;
+   }
+   ```
+
+6. Implement sentence-level text segmentation:
+   - Use NLP libraries or regex patterns to split into sentences
+   - Handle Markdown-specific content (headers, code blocks, lists)
+   - Preserve punctuation and formatting context
+
+7. Add performance optimizations:
+   - Batch embedding requests to reduce API calls
+   - Cache embeddings for repeated text segments
+   - Implement parallel processing for large documents
+   - Add progress tracking for long-running operations
+
