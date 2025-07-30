@@ -6,21 +6,29 @@ A modern .NET Core 9 Web API project designed for Wikipedia-based Retrieval-Augm
 
 ```
 WikiRAG/
-├── src/                          # Source code
-│   ├── WikiRAG.csproj           # Project file
-│   ├── Program.cs               # Application entry point
-│   ├── Dockerfile               # Container configuration
-│   └── Properties/
-│       └── launchSettings.json  # Development settings
-├── docs/                        # Documentation
-├── docker-compose.yml           # Docker Compose configuration
-├── docker-compose.override.yml  # Development overrides
-└── README.md                    # This file
+├── src/                              # Source code
+│   ├── Controllers/                  # API Controllers
+│   ├── Data/                        # Data Access Layer
+│   ├── Models/                      # Domain Models
+│   │   └── DTOs/                    # Data Transfer Objects
+│   ├── Services/                    # Business Logic Layer
+│   ├── Migrations/                  # Entity Framework Migrations
+│   ├── Properties/                  # Project properties and settings
+│   ├── bin/                         # Compiled binaries (auto-generated)
+│   └── obj/                         # Build artifacts (auto-generated)
+├── tests/                           # Test Projects
+│   └── WikiRAG.Tests/              # Main test project
+│       ├── Services/               # Service layer tests
+│       ├── bin/                    # Test binaries (auto-generated)
+│       └── obj/                    # Test build artifacts (auto-generated)
+├── docs/                           # Documentation
+└── ...                             # Configuration files and Docker setup
 ```
 
 ## Prerequisites
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [PostgreSQL](https://www.postgresql.org/download/) with [pgvector extension](https://github.com/pgvector/pgvector) - Required for vector storage and similarity search
 - [Docker](https://www.docker.com/get-started) (optional, for containerization)
 - [Docker Compose](https://docs.docker.com/compose/install/) (optional, for local development)
 
@@ -40,12 +48,18 @@ WikiRAG/
    dotnet restore
    ```
 
-3. **Run the application**
+3. **Apply database migrations**
+   ```bash
+   dotnet ef database update
+   ```
+   *Note: Ensure PostgreSQL with pgvector extension is running and the connection string is configured in appsettings.json*
+
+4. **Run the application**
    ```bash
    dotnet run
    ```
 
-4. **Access the API**
+5. **Access the API**
    - HTTP: http://localhost:5254
    - HTTPS: https://localhost:7028
    - Health Check: http://localhost:5254/api/health
@@ -80,8 +94,105 @@ WikiRAG/
 ### Health Checks
 - `GET /api/health` - Application health status
 
-### Sample Endpoints
-- `GET /weatherforecast` - Sample weather forecast data (development)
+### Document Management
+- `GET /api/document` - List all documents with pagination and optional filtering
+- `GET /api/document/{id}` - Retrieve a specific document by ID
+- `POST /api/document` - Create a new document in the knowledge base
+- `PUT /api/document/{id}` - Update an existing document
+- `DELETE /api/document/{id}` - Delete a document from the knowledge base
+- `POST /api/document/bulk` - Bulk upload multiple documents
+
+### Document Chunking
+- `POST /api/chunking/{documentId}/process` - Process a document into chunks using specified strategy
+- `GET /api/chunking/{documentId}/chunks` - Get all chunks for a document
+- `POST /api/chunking/{documentId}/preview` - Preview how a document would be chunked (without saving)
+
+### Database Testing (Development)
+- `GET /api/databasetest/connection` - Test database connection
+- `GET /api/databasetest/tables` - Verify database tables and get counts
+- `POST /api/databasetest/test-document` - Create a test document for verification
+
+## Testing
+
+The project includes a comprehensive test suite to ensure code quality and reliability.
+
+### Test Structure
+
+```
+tests/
+└── WikiRAG.Tests/           # Main test project
+    ├── Services/            # Service layer tests
+    │   └── ChunkingServiceTests.cs
+    └── WikiRAG.Tests.csproj # Test project configuration
+```
+
+### Test Framework
+
+- **Testing Framework**: xUnit
+- **In-Memory Database**: Entity Framework Core InMemory provider for isolated testing
+- **Code Coverage**: Coverlet for test coverage analysis
+- **Test Runner**: Visual Studio Test Platform
+
+### Running Tests
+
+#### Command Line
+```bash
+# Navigate to the test project
+cd tests/WikiRAG.Tests
+
+# Run all tests
+dotnet test
+
+# Run tests with detailed output
+dotnet test --verbosity normal
+
+# Run tests with code coverage
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+#### Visual Studio
+- Open the solution in Visual Studio
+- Use Test Explorer to run and debug tests
+- Right-click on test methods to run individual tests
+
+#### Docker Testing
+```bash
+# Run tests in Docker container
+docker run --rm -v ${PWD}:/app -w /app/tests/WikiRAG.Tests mcr.microsoft.com/dotnet/sdk:9.0 dotnet test
+```
+
+### Test Categories
+
+#### Service Tests
+- **ChunkingServiceTests**: Tests for document chunking functionality
+  - Header-based chunking with hierarchy preservation
+  - Sentence-based chunking with overlap
+  - Fixed-size chunking with word boundaries
+  - Content preservation (code blocks, tables, lists)
+  - Metadata generation and validation
+
+#### Integration Tests
+- Database connectivity and operations
+- Controller endpoint functionality
+- End-to-end API workflows
+
+### Writing Tests
+
+When adding new features, ensure to:
+
+1. **Unit Tests**: Test individual service methods and business logic
+2. **Integration Tests**: Test API endpoints and database interactions
+3. **Test Coverage**: Aim for high test coverage on critical paths
+4. **Mock Dependencies**: Use in-memory database for isolation
+5. **Test Data**: Create realistic test scenarios and edge cases
+
+### Test Configuration
+
+The test project uses:
+- **In-Memory Database**: Each test gets a fresh database instance
+- **xUnit Facts**: For simple test cases
+- **xUnit Theories**: For parameterized tests with multiple data sets
+- **IDisposable**: Proper cleanup of test resources
 
 ## Environment Configuration
 
